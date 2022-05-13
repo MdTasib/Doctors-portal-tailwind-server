@@ -24,6 +24,7 @@ async function run() {
 	try {
 		await client.connect();
 		const serviceCollection = client.db("doctorsPortal").collection("services");
+		const bookinCollection = client.db("doctorsPortal").collection("bookings");
 
 		// get all service form mongodb
 		app.get("/service", async (req, res) => {
@@ -31,6 +32,23 @@ async function run() {
 			const cursor = serviceCollection.find(query);
 			const services = await cursor.toArray();
 			res.send(services);
+		});
+
+		// post booking
+		app.post("/booking", async (req, res) => {
+			const booking = req.body;
+			const query = {
+				treatment: booking.treatment,
+				date: booking.date,
+				patient: booking.patient,
+			};
+
+			const exists = await bookinCollection.findOne(query);
+			if (exists) {
+				return res.send({ success: false, booking: exists });
+			}
+			const result = await bookinCollection.insertOne(booking);
+			res.send({ success: true, result });
 		});
 	} finally {
 	}
