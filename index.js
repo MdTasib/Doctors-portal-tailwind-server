@@ -34,16 +34,48 @@ async function run() {
 			res.send(services);
 		});
 
+		// get all service - remove booking appointment slot time
+		app.get("/available", async (req, res) => {
+			const date = req.query.date;
+
+			// all service
+			const services = await serviceCollection.find().toArray();
+
+			// finding bookins on date
+			const query = { date: date };
+			const bookings = await bookinCollection.find(query).toArray();
+
+			services.forEach(service => {
+				// booking your all service
+				const serviceBooking = bookings.filter(
+					booking => booking.treatment === service.name
+				);
+				// selected your slot
+				const bookedSlots = serviceBooking.map(book => book.slot);
+				// each service slots without selected slot
+				const available = service.slots.filter(
+					slot => !bookedSlots.includes(slot)
+				);
+				// available slots set appointment service slots
+				service.slots = available;
+			});
+
+			res.send(services);
+		});
+
 		// post booking
 		app.post("/booking", async (req, res) => {
 			const booking = req.body;
+
+			// check booking is already exists
 			const query = {
 				treatment: booking.treatment,
 				date: booking.date,
 				patient: booking.patient,
 			};
-
 			const exists = await bookinCollection.findOne(query);
+
+			// if booking is already exists -- return existsing booking. otherwise return new booking
 			if (exists) {
 				return res.send({ success: false, booking: exists });
 			}
