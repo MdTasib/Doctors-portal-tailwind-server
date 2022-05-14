@@ -25,6 +25,7 @@ async function run() {
 		await client.connect();
 		const serviceCollection = client.db("doctorsPortal").collection("services");
 		const bookinCollection = client.db("doctorsPortal").collection("bookings");
+		const userCollection = client.db("doctorsPortal").collection("users");
 
 		// get all service form mongodb
 		app.get("/service", async (req, res) => {
@@ -89,6 +90,19 @@ async function run() {
 			const query = { patient: patient };
 			const bookings = await bookinCollection.find(query).toArray();
 			res.send(bookings);
+		});
+
+		// user
+		app.put("/user/:email", async (req, res) => {
+			const user = req.body;
+			const email = req.params.email;
+			const filter = { email: email };
+			const options = { upsert: true };
+			const updateDoc = {
+				$set: user,
+			};
+			const result = await userCollection.updateOne(filter, updateDoc, options);
+			res.send(result);
 		});
 	} finally {
 	}
