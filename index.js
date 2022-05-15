@@ -3,6 +3,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const { response } = require("express");
 const port = process.env.PORT || 5000;
 const app = express();
 
@@ -22,7 +23,7 @@ const client = new MongoClient(uri, {
 });
 
 // varify jwt
-function varifyToken(req, res, next) {
+function verifyToken(req, res, next) {
 	const authHeader = req.headers.authorization;
 	if (!authHeader) {
 		return res.status(401).send({ message: "UnAuthorized access" });
@@ -102,7 +103,7 @@ async function run() {
 		});
 
 		// get all bookings
-		app.get("/booking", varifyToken, async (req, res) => {
+		app.get("/booking", verifyToken, async (req, res) => {
 			const patient = req.query.patient;
 			const decodedEmail = req.decoded.email;
 			// you have token, but you don't see another patient service
@@ -113,6 +114,20 @@ async function run() {
 			} else {
 				return res.status(403).send({ message: "Forbidden Access" });
 			}
+		});
+
+		// all user get
+		app.get("/user", verifyToken, async (req, res) => {
+			const users = await userCollection.find().toArray();
+			res.send(users);
+		});
+
+		// ckeck user is admin and get admin
+		app.get("/admin/:email", async (req, res) => {
+			const email = req.params.email;
+			const user = await userCollection.findOne({ email: email });
+			const isAdmin = user.role === "admin";
+			res.send({ admin: isAdmin });
 		});
 
 		// user
@@ -131,6 +146,29 @@ async function run() {
 				{ expiresIn: "1h" }
 			);
 			res.send({ result, token });
+		});
+
+		// make a user admin
+		app.put("/user/admin/:email", verifyToken, async (req, res) => {
+			const email = req.params.email;
+			const filter = { email: email };
+
+			// check request email is already admin
+			// if email is already admin - make an admin. otherwise don't make admin;
+			const requester = req.decoded.email;
+			const requesterAccount = await userCollection.findOne({
+				email: requester,
+			});
+			if (requesterAccount.role === "admin") {
+				const updateDoc = {
+					// update and add a new method is role: "admin"
+					$set: { role: "admin" },
+				};
+				const result = await userCollection.updateOne(filter, updateDoc);
+				res.send(result);
+			} else {
+				res.status(403).send({ message: "Forbidden" });
+			}
 		});
 	} finally {
 	}
