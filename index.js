@@ -21,6 +21,22 @@ const client = new MongoClient(uri, {
 	serverApi: ServerApiVersion.v1,
 });
 
+// varify jwt
+function varifyToken(req, res, next) {
+	const authHeader = req.headers.authorization;
+	if (!authHeader) {
+		return res.status(401).send({ message: "UnAuthorized access" });
+	}
+	const token = authHeader.split(" ")[1];
+	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+		if (err) {
+			return res.status(403).send({ message: "Forbidden access" });
+		}
+		req.decoded = decoded;
+		next();
+	});
+}
+
 async function run() {
 	try {
 		await client.connect();
@@ -86,13 +102,17 @@ async function run() {
 		});
 
 		// get all bookings
-		app.get("/booking", async (req, res) => {
+		app.get("/booking", varifyToken, async (req, res) => {
 			const patient = req.query.patient;
-			const authorization = req.headers.authorization;
-			console.log("server side auth", authorization);
-			const query = { patient: patient };
-			const bookings = await bookinCollection.find(query).toArray();
-			res.send(bookings);
+			const decodedEmail = req.decoded.email;
+			// you have token, but you don't see another patient service
+			if (patient === decodedEmail) {
+				const query = { patient: patient };
+				const bookings = await bookinCollection.find(query).toArray();
+				res.send(bookings);
+			} else {
+				return res.status(403).send({ message: "Forbidden Access" });
+			}
 		});
 
 		// user
