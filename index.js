@@ -194,6 +194,14 @@ async function run() {
 			const result = await doctorCollection.insertOne(doctor);
 			res.send(result);
 		});
+
+		// delete a doctor
+		app.delete("/doctor/:email", verifyToken, verifyAdmin, async (req, res) => {
+			const email = req.params.email;
+			const filter = { email: email };
+			const result = await doctorCollection.deleteOne(filter);
+			res.send(result);
+		});
 	} finally {
 	}
 }
