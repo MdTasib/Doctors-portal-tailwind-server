@@ -44,6 +44,22 @@ async function run() {
 		const serviceCollection = client.db("doctorsPortal").collection("services");
 		const bookinCollection = client.db("doctorsPortal").collection("bookings");
 		const userCollection = client.db("doctorsPortal").collection("users");
+		const doctorCollection = client.db("doctorsPortal").collection("doctors");
+
+		// varifyAdmin function. check user is Admin
+		async function verifyAdmin(req, res, next) {
+			// check request email is already admin
+			// if email is already admin - make an admin. otherwise don't make admin;
+			const requester = req.decoded.email;
+			const requesterAccount = await userCollection.findOne({
+				email: requester,
+			});
+			if (requesterAccount.role === "admin") {
+				next();
+			} else {
+				res.status(403).send({ message: "Forbidden" });
+			}
+		}
 
 		// get all service form mongodb
 		app.get("/service", async (req, res) => {
@@ -149,26 +165,34 @@ async function run() {
 		});
 
 		// make a user admin
-		app.put("/user/admin/:email", verifyToken, async (req, res) => {
-			const email = req.params.email;
-			const filter = { email: email };
+		app.put(
+			"/user/admin/:email",
+			verifyToken,
+			verifyAdmin,
+			async (req, res) => {
+				const email = req.params.email;
+				const filter = { email: email };
 
-			// check request email is already admin
-			// if email is already admin - make an admin. otherwise don't make admin;
-			const requester = req.decoded.email;
-			const requesterAccount = await userCollection.findOne({
-				email: requester,
-			});
-			if (requesterAccount.role === "admin") {
 				const updateDoc = {
 					// update and add a new method is role: "admin"
 					$set: { role: "admin" },
 				};
 				const result = await userCollection.updateOne(filter, updateDoc);
 				res.send(result);
-			} else {
-				res.status(403).send({ message: "Forbidden" });
 			}
+		);
+
+		// get all doctors
+		app.get("/doctor", verifyToken, verifyAdmin, async (req, res) => {
+			const doctors = await doctorCollection.find().toArray();
+			res.send(doctors);
+		});
+
+		// add a doctor
+		app.post("/doctor", verifyToken, verifyAdmin, async (req, res) => {
+			const doctor = req.body;
+			const result = await doctorCollection.insertOne(doctor);
+			res.send(result);
 		});
 	} finally {
 	}
