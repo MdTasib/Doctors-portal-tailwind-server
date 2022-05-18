@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { response } = require("express");
 const port = process.env.PORT || 5000;
 const app = express();
@@ -130,6 +130,14 @@ async function run() {
 			} else {
 				return res.status(403).send({ message: "Forbidden Access" });
 			}
+		});
+
+		// get booking on specific id
+		app.get("/booking/:id", verifyToken, async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: ObjectId(id) };
+			const result = await bookinCollection.findOne(filter);
+			res.send(result);
 		});
 
 		// all user get
