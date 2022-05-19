@@ -5,6 +5,7 @@ require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { response } = require("express");
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.Payment_Secket_Key);
 const app = express();
 
 app.use(cors());
@@ -60,6 +61,19 @@ async function run() {
 				res.status(403).send({ message: "Forbidden" });
 			}
 		}
+
+		// payment system
+		app.post("/create-payment-intent", verifyToken, async (req, res) => {
+			const service = req.body;
+			const price = service.price;
+			const amount = price * 100;
+			const paymentIntent = await stripe.paymentIntents.create({
+				amount: amount,
+				currency: "usd",
+				payment_method_types: ["card"],
+			});
+			res.send({ clientSecret: paymentIntent.client_secret });
+		});
 
 		// get all service form mongodb
 		app.get("/service", async (req, res) => {
