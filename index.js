@@ -46,6 +46,7 @@ async function run() {
 		const bookinCollection = client.db("doctorsPortal").collection("bookings");
 		const userCollection = client.db("doctorsPortal").collection("users");
 		const doctorCollection = client.db("doctorsPortal").collection("doctors");
+		const paymentCollection = client.db("doctorsPortal").collection("payments");
 
 		// varifyAdmin function. check user is Admin
 		async function verifyAdmin(req, res, next) {
@@ -73,6 +74,26 @@ async function run() {
 				payment_method_types: ["card"],
 			});
 			res.send({ clientSecret: paymentIntent.client_secret });
+		});
+
+		// payment confirm
+		app.patch("/booking/:id", async (req, res) => {
+			const id = req.params.id;
+			const payment = req.body;
+			const filter = { _id: ObjectId(id) };
+			const updatedDoc = {
+				$set: {
+					paid: true,
+					transactionId: payment.transactionId,
+				},
+			};
+
+			const result = await paymentCollection.insertOne(payment);
+			const updatedBooking = await bookinCollection.updateOne(
+				filter,
+				updatedDoc
+			);
+			res.send(updatedDoc);
 		});
 
 		// get all service form mongodb
